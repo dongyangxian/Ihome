@@ -1,0 +1,406 @@
+1/图片验证码的生成
+请求地址:/api/v1.0/imagecode/<image_code_id>
+请求方法:GET,(关键是看当前接口的目的是做什么?)本质上相当于获取资源!!!
+
+请求参数:
+参数名         是否必须        参数说明
+image_code_id   是           图片验证码的后缀名(UUID)
+
+返回结果:示例图片验证码的内容:name,text,image
+正确情况:
+    if response.headers['Content-Type'] = 'text/html':
+        response.headers['Content-Type'] = 'applications/json'
+response = make_response(image)
+response.headers['Content-Type'] = 'image/jpg'
+return response
+
+错误情况:
+return jsonify(errno=RET.DBERR,errmsg='保存图片验证码失败')
+{
+    errno=RET.DBERR,
+    errmsg='保存图片验证码失败'
+}
+
+
+2/发送短信
+请求url:/api/v1.0/smscode/<mobile>&text=imagecode&id=UUID
+请求方法:GET
+请求参数:
+参数名         是否必须        参数说明
+mobile          是           用户输入的手机号
+text            是           用户输入的图片验证码内容
+id              是           图片验证码的编号(UUID)
+返回结果:
+
+正确情况:
+{
+    errno=RET.OK,
+    errmsg='发送成功'
+}
+
+错误情况:
+{
+    errno=RET.DATAERR,
+    errmsg='图片验证码不一致'
+}
+
+
+3/用户注册
+请求方法:POST
+请求url:/api/v1.0/users
+请求参数:
+参数名         是否必须        参数说明
+mobile          是           用户输入的手机号
+sms_code        是           用户输入的短信验证码
+password        是           用户输入的密码
+
+返回结果:
+正确:post相当于在服务器生成一个资源,返回的data数据相当于对post请求的附属信息;如果前端有需要,可以使用,如果不用,丢弃;
+{
+    errno=RET.OK,
+    errmsg='OK',
+    data = user.to_dict()
+}
+
+错误:
+{
+    errno=RET.DBERR,
+    errmsg='手机号已经存在'
+}
+
+
+4/用户登陆
+请求方法:POST
+请求URL:/api/v1.0/sessions
+数据格式:json
+请求参数:
+参数名         是否必须        参数说明
+mobile          是           用户输入的登陆手机号
+password        是           用户输入的登陆密码
+
+返回结果:
+正确:
+{
+    errno=RET.OK,
+    errmsg='OK',
+    data={'user_id':user.id}
+}
+错误:
+{
+    errno=RET.DATAERR,
+    errmsg='用户名或密码错误'
+}
+
+
+5/获取用户信息
+请求方法:GET
+请求URL:/api/v1.0/user
+数据格式:json
+
+请求参数:使用登陆验证装饰器,通过g变量获取用户id
+参数名         是否必须        参数说明
+无
+返回结果:
+正确:
+{
+    errno=RET.OK,
+    errmsg='OK',
+    data=user.to_dict()
+}
+
+错误:
+{
+    errno=RET.NODATA,
+    errmsg='无效操作'
+}
+
+
+6/上传用户头像
+请求方法:POST
+请求url:/api/v1.0/user/avatar
+数据格式:json (图片存储在七牛云空间,后端返回的是图片的绝对路径=七牛云的外链域名+调用七牛云上传图片返回的结果,即图片名称)
+
+请求参数:
+参数名         是否必须        参数描述
+avatar          是           用户选择的头像图片文件
+
+返回结果:
+正确:
+{
+    errno=RET.OK,
+    errmsg='OK'
+    data={'avatar_url':image_url}
+}
+错误:
+{
+    errno=RET.THIRDERR,
+    errmsg='上传七牛云失败'
+}
+
+
+7/修改用户名
+请求方法:PUT
+请求URL:/api/v1.0/user/name
+数据格式:json
+请求参数:
+参数名         是否必须        参数描述
+name            是           用户输入的用户名(昵称)
+
+返回结果:
+正确:
+{
+    errno=RET.OK,
+    errmsg='OK'
+    data={'name':name}
+}
+错误:
+{
+    errno=RET.DBERR,
+    errmsg='更新用户名失败'
+}
+
+8/实名认证
+请求方法:POST
+请求URL:/api/v1.0/user/auth
+数据格式:json
+请求参数:
+参数名         是否必须        参数描述
+real_name       是           用户输入的真实姓名
+id_card         是           用户输入的身份证号码
+
+返回结果:
+正确:
+{
+    errno=RET.OK,
+    errmsg='OK'
+}
+
+错误:
+{
+    errno=RET.DBERR,
+    errmsg='保存用户实名信息失败'
+}
+
+9/获取用户的实名信息
+请求方法:GET
+请求URL:/api/v1.0/user/auth
+数据格式:json
+请求参数:无参
+
+返回结果:
+正确:
+{
+    errno=RET.OK,
+    errmsg='OK',
+    data=user.auth_to_dict()
+}
+
+错误:
+{
+    errno=RET.NODATA,
+    errmsg='无效操作'
+}
+
+
+
+10/获取城区信息
+请求方法:GET
+请求URL:/api/v1.0/areas
+数据格式:json
+请求参数:无参数
+
+返回结果:
+正确:不需要使用return jsonify(),因为redis中存储的城区信息已经是json字符串.
+return '{"errno":0,"errmsg":"OK","data":areas_json}'
+错误:
+{
+    errno=RET.DBERR,
+    errmsg='查询城区信息失败'
+}
+
+
+11/发布新房源
+请求方法:POST
+请求URL:/api/v1.0/houses
+数据格式:json
+请求参数:
+参数名         是否必须        参数描述
+title            是          房屋标题
+price            是          房屋价格
+address          是          房屋详细地址
+area_id          是          房屋所属城区
+room_count       是          房屋数目
+acreage          是          房屋面积
+unit             是          房屋户型描述
+capacity         是          房屋适住人数
+beds             是          房屋卧床配置
+deposit          是          房屋押金
+min_days         是          最小入住天数
+max_days         是          最大入住天数
+facility         否          房屋配套设施
+
+返回结果:
+正确:
+{
+    errno=RET.OK,
+    errmsg='OK',
+    data={"house_id":house.id}
+}
+
+错误:
+{
+    errno=RET.DBERR,
+    errmsg='查询房屋配套设施异常'
+}
+
+
+12/上传房屋图片
+请求方法:POST
+请求URL:/api/v1.0/houses/<int:house_id>/images
+数据格式:json
+请求参数:
+参数名         是否必须        参数描述
+house_image      是          上传的房屋图片
+house_id         是          房屋的id
+
+返回结果:
+正确:
+{
+    errno=RET.OK,
+    errmsg='OK',
+    data={'url':image_url}
+}
+
+错误:
+{
+    errno=RET.THIRDERR,
+    errmsg='上传七牛云图片失败'
+}
+
+13/用户退出
+请求方法:DELETE
+请求URL:/api/v1.0/session
+数据格式:json
+请求参数:无参
+
+返回结果:
+正确:
+session['user_id'] = user.id
+user_id = session.get('user_id')
+session.clear()
+{
+    errnp=RET.OK,
+    errmsg='OK',
+}
+
+
+14/检查用户的登陆状态
+请求方法:GET
+请求URL:/api/v1.0/session
+数据格式:json
+请求参数:无参数
+参数名         是否必须        参数说明
+无
+返回结果:
+正确:
+{
+    errno=RET.OK,
+    errmsg='true',
+    data={'name':name}
+}
+
+错误:
+{
+    errno=RET.SESSIONERR,
+    errmsg='false'
+}
+
+15/获取用户发布的房屋信息
+请求方法:GET
+请求URL:/api/v1.0/user/houses
+数据格式:json
+请求参数:无参数
+参数名         是否必须        参数描述
+
+返回结果:
+正确:
+{
+    errno=RET.OK,
+    errmsg='OK',
+    data={'houses':houses_list}
+}
+
+错误:(不会有NODATA,因为用户有可能未发布房屋)
+{
+    errno=RET.DBERR,
+    errmsg='查询用户房屋数据异常'
+}
+
+16/项目首页幻灯片
+请求方法:GET
+请求URL:/api/v1.0/houses/index
+数据格式:json
+请求参数:无参数
+参数名         是否必须        参数描述
+
+返回结果:
+正确:
+return '{"errno":0,"errmsg":"OK","data":%s}' % houses_json
+错误:
+{
+    errno=RET.DBERR,
+    errmsg='查询首页信息异常'
+}
+
+
+17/房屋详情页面
+请求方法:GET
+请求URL:/api/v1.0/houses/<int:house_id>
+数据格式:json
+请求参数:
+参数名         是否必须        参数描述
+house_id        是           房屋的id
+
+返回结果:
+正确:
+return '{"errno":0,"errmsg":"OK","data":{"user_id":%s,"house":%s}}' % (user_id,house_json)
+
+错误:user_id = session.get('user_id','-1')
+{
+    errno=RET.DBERR,
+    errmsg='查询房屋详情数据异常'
+}
+
+18/房屋列表页
+请求方法:GET
+请求URL:/api/v1.0/houses?args*****
+数据格式:json
+请求参数:
+参数名       是否必须        参数描述
+sd             否          用户选择的开始日期(start_date_str)
+ed             否          用户选择的离开日期(end_date_str)
+aid            否          用户选择的区域信息(area_id)
+sk             否          用户选择的排序条件(sort_key),需要给默认值
+p              否          用户选择的页数(page),需要给默认值
+
+返回结果:
+正确:hash数据类型:本质是对象(key,vals),让我们可以以一个键(hash对象)存储多条数据.
+redis_key = 'houses_%s_%s_%s_%s' %(area_id,start_date_str,end_date_str,sort_key)
+redis_store.hget(redis_key,page)
+resp = {
+    errno=RET.OK,
+    errmsg='OK',
+    data={"houses":houses_list,"total_page":total_page,"current_page":page}
+}
+houses_json = json.dumps(resp)
+使用事务,对数据统一处理
+
+错误:
+{
+    errno=RET.DBERR,
+    errmsg='查询房屋列表信息失败'
+}
+
+
+
+
